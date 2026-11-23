@@ -68,6 +68,10 @@ export default function App() {
           ))}
         </ul>
       </details>
+
+      <p style={{ marginTop: 24, fontSize: 14 }}>
+        <a href="/vergelijk">Model testen met eigen testfoto's →</a>
+      </p>
     </main>
   )
 }
