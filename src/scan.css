@@ -1,0 +1,332 @@
+/* Stijlen van het scanscherm: camera over het hele scherm, resultaat in een sheet onderaan.
+   Alles hangt onder .scan zodat /vergelijk niet verandert.
+   Kleuren van de afvalbakken komen uit config.js (inline als stijl). */
+
+body:has(.scan) {
+  margin: 0;
+  background: #101614;
+}
+
+.scan {
+  --ink: #17302b;
+  --muted: #4a5f5a;
+  --line: #cfd9d5;
+
+  position: relative;
+  box-sizing: border-box;
+  max-width: 480px;
+  height: 100svh;
+  margin: 0 auto;
+  overflow: hidden;
+  color: var(--ink);
+  font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+
+.scan *,
+.scan *::before,
+.scan *::after {
+  box-sizing: inherit;
+}
+
+.scan :focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* Camera vult het hele scherm. */
+.camera {
+  position: absolute;
+  inset: 0;
+  background: #101614;
+}
+
+.camera video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Kop zweeft boven het beeld in twee donkere pillen. */
+.scan-header {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: max(12px, env(safe-area-inset-top));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.scan-title,
+.scan-points {
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(10, 20, 18, 0.78);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.scan-points {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Scankader: witte hoeken met een donkere schaduw, zichtbaar op licht én donker beeld. */
+.scan-frame {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  width: 58%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 3px rgba(0, 0, 0, 0.6));
+  pointer-events: none;
+}
+
+.scan-frame span {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border: 4px solid #fff;
+}
+
+.scan-frame span:nth-child(1) { left: 0; top: 0; border-right: 0; border-bottom: 0; border-top-left-radius: 14px; }
+.scan-frame span:nth-child(2) { right: 0; top: 0; border-left: 0; border-bottom: 0; border-top-right-radius: 14px; }
+.scan-frame span:nth-child(3) { left: 0; bottom: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 14px; }
+.scan-frame span:nth-child(4) { right: 0; bottom: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 14px; }
+
+/* Sheet onderaan: status, advies en extra's. */
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 62svh;
+  overflow-y: auto;
+  padding: 10px 20px max(20px, env(safe-area-inset-bottom));
+  border-radius: 28px 28px 0 0;
+  background: #fff;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.25);
+}
+
+.sheet-handle {
+  width: 40px;
+  height: 5px;
+  margin: 0 auto 12px;
+  border-radius: 3px;
+  background: var(--line);
+}
+
+.sheet-status p {
+  margin: 0;
+  font-size: 16px;
+}
+
+.meter {
+  height: 6px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ink);
+  transition: width 200ms linear;
+}
+
+.scan-alert {
+  margin: 0 0 8px;
+  color: #9f1d1d;
+  font-size: 15px;
+}
+
+/* Advies: kleurblokje van de afvalbak, naam en uitleg. */
+.advice {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  animation: advice-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.advice-chip {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+}
+
+.advice-bin {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.advice-meta {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.advice-tip {
+  grid-column: 1 / -1;
+  margin: 10px 0 0;
+  max-width: 60ch;
+}
+
+@keyframes advice-in {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+/* Camerafout: uitleg plus een knop om opnieuw te proberen. */
+.camera-error {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 80px;
+  padding: 20px;
+  border-radius: 20px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.camera-error h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.camera-error p {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* Extra's onderaan: ruime tapdoelen (minstens 48px hoog). */
+.scan-extra {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.scan-extra summary,
+.scan-extra a {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  color: var(--ink);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.scan-extra summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.scan-extra a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.scan-extra ul {
+  margin: 8px 0 12px;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .advice { animation: none; }
+  .meter span { transition: none; }
+}
+
+/* Breed scherm (laptop of desktop): camera links, resultaat rechts in een paneel. */
+@media (min-width: 900px) {
+  .scan {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 400px;
+    grid-template-rows: auto 1fr;
+    gap: 16px 24px;
+    max-width: 1200px;
+    padding: 24px;
+  }
+
+  .camera {
+    position: relative;
+    grid-column: 1;
+    grid-row: 1 / 3;
+    overflow: hidden;
+    border-radius: 24px;
+  }
+
+  .camera-error {
+    position: static;
+    grid-column: 1;
+    grid-row: 1 / 3;
+    align-self: start;
+  }
+
+  .scan-frame {
+    top: 50%;
+    width: min(60%, 60svh);
+  }
+
+  .scan-header {
+    position: static;
+    grid-column: 2;
+    grid-row: 1;
+    pointer-events: auto;
+  }
+
+  .scan-title,
+  .scan-points {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .sheet {
+    position: static;
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+    max-height: none;
+    border-radius: 24px;
+    box-shadow: none;
+  }
+
+  .sheet-handle {
+    display: none;
+  }
+}

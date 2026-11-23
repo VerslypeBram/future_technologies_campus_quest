@@ -21,6 +21,7 @@ function cameraErrorMessage(err) {
 export default function Camera({ onReady, children }) {
   const videoRef = useRef(null)
   const [error, setError] = useState(null)
+  const [attempt, setAttempt] = useState(0) // ophogen = camera opnieuw starten
 
   useEffect(() => {
     let stream
@@ -28,6 +29,7 @@ export default function Camera({ onReady, children }) {
 
     async function start() {
       try {
+        setError(null)
         if (!navigator.mediaDevices?.getUserMedia) throw new Error('unsupported')
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' }, // achtercamera op smartphone
@@ -48,14 +50,24 @@ export default function Camera({ onReady, children }) {
       cancelled = true
       stream?.getTracks().forEach((t) => t.stop())
     }
-  }, [onReady])
+  }, [onReady, attempt])
 
-  if (error) return <p role="alert">{error}</p>
+  if (error) {
+    return (
+      <div className="camera-error" role="alert">
+        <h2>Camera niet beschikbaar</h2>
+        <p>{error}</p>
+        <button type="button" className="button" onClick={() => setAttempt((n) => n + 1)}>
+          Opnieuw proberen
+        </button>
+      </div>
+    )
+  }
 
   // playsInline + muted zijn nodig voor iOS Safari, anders blijft het beeld zwart.
   return (
-    <div style={{ position: 'relative' }}>
-      <video ref={videoRef} playsInline muted autoPlay style={{ display: 'block', width: '100%', borderRadius: 12 }} />
+    <div className="camera">
+      <video ref={videoRef} playsInline muted autoPlay aria-label="Livebeeld van de camera" />
       {children}
     </div>
   )
