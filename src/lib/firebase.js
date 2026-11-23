@@ -3,14 +3,13 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth'
 import {
-  addDoc,
   collection,
   doc,
   getFirestore,
   increment,
   onSnapshot,
   serverTimestamp,
-  setDoc,
+  writeBatch,
 } from 'firebase/firestore'
 
 const config = {
@@ -37,18 +36,18 @@ export function watchPoints(uid, callback) {
   return onSnapshot(doc(db, 'users', uid), (snap) => callback(snap.data()?.points ?? 0))
 }
 
-/** Slaat een bevestigde scan op en telt punten bij. */
+/**
+ * Slaat een bevestigde scan op en telt punten bij, in één batch: ofwel lukken
+ * beide schrijfacties, ofwel geen. De Firestore-rules eisen dat ze samen gebeuren.
+ */
 export async function saveScan(uid, { label, confidence, points }) {
-  await addDoc(collection(db, 'scans'), {
-    uid,
-    label,
-    confidence,
-    points,
-    createdAt: serverTimestamp(),
-  })
-  await setDoc(
+  const scanRef = doc(collection(db, 'scans'))
+  const batch = writeBatch(db)
+  batch.set(scanRef, { uid, label, confidence, points, createdAt: serverTimestamp() })
+  batch.set(
     doc(db, 'users', uid),
-    { points: increment(points), scans: increment(1), updatedAt: serverTimestamp() },
+    { points: increment(points), scans: increment(1), updatedAt: serverTimestamp(), lastScan: scanRef.id },
     { merge: true },
   )
+  await batch.commit()
 }
