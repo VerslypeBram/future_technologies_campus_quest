@@ -5,13 +5,16 @@ export default function AdviceCard({ label, confidence }) {
   const advice = WASTE_CLASSES[label]
   if (!advice) return null
   return (
-    <section className="advice" style={{ '--bin': advice.color }} aria-label="Sorteeradvies">
-      <p className="advice-meta">
-        <span>Herkend: {label}</span>
-        {confidence != null && <span>{Math.round(confidence * 100)}% zeker</span>}
-      </p>
-      <h2 className="advice-bin">{advice.bin}</h2>
+    <article className="advice" aria-label="Sorteeradvies">
+      <span className="advice-chip" style={{ background: advice.color }} aria-hidden="true" />
+      <div>
+        <h2 className="advice-bin">{advice.bin}</h2>
+        <p className="advice-meta">
+          {label}
+          {confidence != null && `, ${Math.round(confidence * 100)}% zeker`}
+        </p>
+      </div>
       <p className="advice-tip">{advice.tip}</p>
-    </section>
+    </article>
   )
 }

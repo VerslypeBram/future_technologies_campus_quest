@@ -15,11 +15,6 @@ function ScanFrame() {
   )
 }
 
-// Statusbalk onderaan het camerabeeld. Alleen de tekst wordt voorgelezen, de balk niet.
-function StatusBar({ children }) {
-  return <div className="status-bar" role="status">{children}</div>
-}
-
 export default function App() {
   const { model, error } = useModel()
   const { points, addScan, error: pointsError } = usePoints()
@@ -47,24 +42,34 @@ export default function App() {
     return () => clearInterval(id)
   }, [model, video, addScan])
 
+  const best = predictions.length ? topPrediction(predictions) : null
+  // Tijdens het herkennen van een nieuwe verpakking toont de sheet de voortgang, daarna weer het advies.
+  const showAdvice = confirmed && detection.status !== 'detecting'
+
   return (
     <main className="scan">
+      <Camera onReady={onReady}>
+        <ScanFrame />
+      </Camera>
+
       <header className="scan-header">
         <h1 className="scan-title">Smart Sort Quest</h1>
         <p className="scan-points">{points} punten</p>
       </header>
-      <p className="scan-intro">Scan een lege verpakking en ontdek in welke afvalbak ze hoort.</p>
-      <Camera onReady={onReady}>
-        <ScanFrame />
+
+      <section className="sheet" aria-label="Scanresultaat">
+        <div className="sheet-handle" aria-hidden="true" />
+        {error && <p className="scan-alert" role="alert">{error}</p>}
+        {pointsError && <p className="scan-alert" role="alert">{pointsError}</p>}
         {!error && (
-          <StatusBar>
+          <div className="sheet-status" role="status">
             {!model && <p>Model laden…</p>}
             {model && detection.status === 'idle' && <p>Houd een lege verpakking in het kader.</p>}
             {model && detection.status === 'detecting' && (
               <>
                 <p>
-                  <span className="status-label">Herkennen: </span>
-                  {detection.label}
+                  Herkennen: <strong>{detection.label}</strong>
+                  {best && ` · ${Math.round(best.probability * 100)}%`}
                 </p>
                 <div className="meter" aria-hidden="true">
                   <span style={{ width: `${Math.round(detection.progress * 100)}%` }} />
@@ -72,29 +77,29 @@ export default function App() {
               </>
             )}
             {model && (detection.status === 'confirmed' || detection.status === 'locked') && (
-              <p>+{POINTS_PER_SCAN} punten! Haal de verpakking weg voor een volgende scan.</p>
+              <p>
+                <strong>+{POINTS_PER_SCAN} punten!</strong> Haal de verpakking weg voor een volgende scan.
+              </p>
             )}
-          </StatusBar>
+          </div>
         )}
-      </Camera>
-      {error && <p className="scan-alert" role="alert">{error}</p>}
-      {pointsError && <p className="scan-alert" role="alert">{pointsError}</p>}
 
-      <AdviceCard label={confirmed?.label} confidence={confirmed?.confidence} />
+        {showAdvice && <AdviceCard label={confirmed.label} confidence={confirmed.confidence} />}
 
-      <div className="scan-extra">
-        <details>
-          <summary>Zekerheid per klasse</summary>
-          <ul>
-            {predictions.map((p) => (
-              <li key={p.className}>
-                {p.className}: {(p.probability * 100).toFixed(0)}%
-              </li>
-            ))}
-          </ul>
-        </details>
-        <a href="/vergelijk">Model testen met eigen testfoto's</a>
-      </div>
+        <div className="scan-extra">
+          <details>
+            <summary>Zekerheid per klasse</summary>
+            <ul>
+              {predictions.map((p) => (
+                <li key={p.className}>
+                  {p.className}: {(p.probability * 100).toFixed(0)}%
+                </li>
+              ))}
+            </ul>
+          </details>
+          <a href="/vergelijk">Model testen met eigen testfoto's</a>
+        </div>
+      </section>
     </main>
   )
 }
