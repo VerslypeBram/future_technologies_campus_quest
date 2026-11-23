@@ -10,7 +10,10 @@ export const DETECTION = {
   threshold: 0.9, // minimale zekerheid per frame (90%)
   stableFrames: 6, // zoveel frames na elkaar boven de drempel
   intervalMs: 250, // ~4 voorspellingen per seconde -> 6 frames ≈ 1,5 s
+  resetFrames: 8, // na een score eerst 8 frames (≈ 2 s) lege achtergrond tonen
 }
+
+export const POINTS_PER_SCAN = 10
 
 // Klasse in Teachable Machine die "geen object" betekent: geen advies.
 export const BACKGROUND_LABEL = 'Geen verpakking'

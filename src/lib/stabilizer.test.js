@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { createStabilizer, topPrediction } from './stabilizer.js'
 
-const opts = { threshold: 0.9, stableFrames: 3, backgroundLabel: 'Geen verpakking' }
+const opts = { threshold: 0.9, stableFrames: 3, resetFrames: 2, backgroundLabel: 'Geen verpakking' }
 const p = (className, probability = 0.95) => ({ className, probability })
+const bg = () => p('Geen verpakking', 0.99)
 
 describe('stabilizer', () => {
   it('bevestigt pas na N frames na elkaar boven de drempel', () => {
@@ -29,7 +30,23 @@ describe('stabilizer', () => {
 
   it('geeft nooit advies bij de achtergrondklasse', () => {
     const s = createStabilizer(opts)
-    for (let i = 0; i < 5; i++) expect(s.push(p('Geen verpakking', 0.99)).status).toBe('idle')
+    for (let i = 0; i < 5; i++) expect(s.push(bg()).status).toBe('idle')
+  })
+
+  it('bevestigt hetzelfde object maar één keer zolang het voor de camera blijft', () => {
+    const s = createStabilizer(opts)
+    ;[1, 2, 3].forEach(() => s.push(p('PMD')))
+    for (let i = 0; i < 10; i++) expect(s.push(p('PMD')).status).toBe('locked')
+  })
+
+  it('vrijgegeven pas na genoeg frames lege achtergrond na elkaar', () => {
+    const s = createStabilizer(opts)
+    ;[1, 2, 3].forEach(() => s.push(p('PMD')))
+    expect(s.push(bg()).status).toBe('locked')
+    expect(s.push(p('PMD')).status).toBe('locked') // onderbroken -> opnieuw tellen
+    expect(s.push(bg()).status).toBe('locked')
+    expect(s.push(bg()).status).toBe('idle')
+    expect(s.push(p('PMD')).status).toBe('detecting')
   })
 
   it('topPrediction kiest de hoogste zekerheid', () => {

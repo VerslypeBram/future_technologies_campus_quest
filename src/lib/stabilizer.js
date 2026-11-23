@@ -2,20 +2,36 @@
 // Bewust zonder React of tfjs, zodat het los getest kan worden.
 
 /**
- * @param {{threshold: number, stableFrames: number, backgroundLabel: string}} opts
+ * @param {{threshold: number, stableFrames: number, resetFrames: number, backgroundLabel: string}} opts
  */
-export function createStabilizer({ threshold, stableFrames, backgroundLabel }) {
+export function createStabilizer({ threshold, stableFrames, resetFrames, backgroundLabel }) {
   let label = null
   let count = 0
+  // Reset-regel: na een bevestiging is de scanner "vergrendeld" tot de camera
+  // `resetFrames` frames na elkaar zeker de lege achtergrond ziet.
+  let locked = false
+  let backgroundCount = 0
 
   /**
    * Verwerk de beste voorspelling van één frame.
    * @param {{className: string, probability: number}} top
-   * @returns {{status: 'idle'|'detecting'|'confirmed', label: string|null, progress: number}}
+   * @returns {{status: 'idle'|'detecting'|'confirmed'|'locked', label: string|null, progress: number}}
    */
   function push(top) {
     const confident = top.probability >= threshold
-    if (!confident || top.className === backgroundLabel) {
+    const isBackground = top.className === backgroundLabel
+
+    if (locked) {
+      backgroundCount = confident && isBackground ? backgroundCount + 1 : 0
+      if (backgroundCount >= resetFrames) {
+        locked = false
+        backgroundCount = 0
+        return { status: 'idle', label: null, progress: 0 }
+      }
+      return { status: 'locked', label: null, progress: backgroundCount / resetFrames }
+    }
+
+    if (!confident || isBackground) {
       label = null
       count = 0
       return { status: 'idle', label: null, progress: 0 }
@@ -27,7 +43,13 @@ export function createStabilizer({ threshold, stableFrames, backgroundLabel }) {
       count = 1
     }
 
-    if (count >= stableFrames) return { status: 'confirmed', label, progress: 1 }
+    if (count >= stableFrames) {
+      const confirmed = label
+      label = null
+      count = 0
+      locked = true
+      return { status: 'confirmed', label: confirmed, progress: 1 }
+    }
     return { status: 'detecting', label, progress: count / stableFrames }
   }
 
