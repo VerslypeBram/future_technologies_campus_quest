@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Puntentotaal: enkel de eigen gebruiker, en per schrijfactie max +10 punten.
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.points <= 10;
+      allow update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.points <= resource.data.points + 10;
+    }
+
+    // Scans: enkel aanmaken voor jezelf, met een geldig label en zekerheid >= 90%.
+    // Geen beelden, geen wijzigen of verwijderen.
+    match /scans/{scanId} {
+      allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.label in ['PMD', 'Papier/Karton', 'Restafval']
+        && request.resource.data.confidence >= 0.9
+        && request.resource.data.points == 10;
+      allow update, delete: if false;
+    }
+  }
+}
