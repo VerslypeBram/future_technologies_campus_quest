@@ -37,3 +37,10 @@ export const WASTE_CLASSES = {
     tip: 'Deze verpakking kan niet gerecycleerd worden via PMD of papier.',
   },
 }
+
+// Modellen die de testpagina (/vergelijk) naast elkaar zet.
+// Elke map bevat een Teachable Machine-export. Model A is ook het scanmodel.
+export const COMPARE_MODELS = [
+  { name: 'A: huidige dataset', url: MODEL_URL },
+  { name: 'B: gevarieerde dataset', url: '/model-b/' },
+]
