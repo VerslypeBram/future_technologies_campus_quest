@@ -17,7 +17,8 @@ function cameraErrorMessage(err) {
   }
 }
 
-export default function Camera({ onReady }) {
+// `children` wordt over het camerabeeld gelegd (kader en statusbalk).
+export default function Camera({ onReady, children }) {
   const videoRef = useRef(null)
   const [error, setError] = useState(null)
 
@@ -52,5 +53,10 @@ export default function Camera({ onReady }) {
   if (error) return <p role="alert">{error}</p>
 
   // playsInline + muted zijn nodig voor iOS Safari, anders blijft het beeld zwart.
-  return <video ref={videoRef} playsInline muted autoPlay style={{ width: '100%', borderRadius: 12 }} />
+  return (
+    <div style={{ position: 'relative' }}>
+      <video ref={videoRef} playsInline muted autoPlay style={{ display: 'block', width: '100%', borderRadius: 12 }} />
+      {children}
+    </div>
+  )
 }
