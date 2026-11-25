@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { GAME, POINTS_PER_SCAN, WASTE_CLASSES } from '../config.js'
+import { GAME, WASTE_CLASSES } from '../config.js'
 
 /**
  * Neemt een vierkante momentopname van het deel van het camerabeeld binnen het scankader.
@@ -42,8 +42,9 @@ const FLY_SIZE = 72
 /**
  * Drie vuilbakken. `active` licht de bak van de kandidaat-klasse op tijdens het herkennen.
  * `toss` ({ id, label, image }) laat het item vanuit het scankader in de juiste bak vliegen.
+ * `onLand(id)` wordt aangeroepen zodra het item in de bak landt (of meteen zonder animatie).
  */
-export default function Bins({ active, toss, sourceRef }) {
+export default function Bins({ active, toss, sourceRef, onLand }) {
   const binRefs = useRef({})
   const flyRef = useRef(null)
   const [hit, setHit] = useState(null)
@@ -57,6 +58,7 @@ export default function Bins({ active, toss, sourceRef }) {
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     if (!bin || !fly || !from || reduceMotion || !fly.animate) {
       setHit(toss)
+      onLand?.(toss.id)
       return
     }
 
@@ -76,12 +78,13 @@ export default function Bins({ active, toss, sourceRef }) {
     anim.onfinish = () => {
       fly.hidden = true
       setHit(toss)
+      onLand?.(toss.id)
     }
     return () => {
       anim.cancel()
       fly.hidden = true
     }
-  }, [toss, sourceRef])
+  }, [toss, sourceRef, onLand])
 
   // Treffer-animatie na een korte tijd weer weghalen.
   useEffect(() => {
@@ -106,14 +109,14 @@ export default function Bins({ active, toss, sourceRef }) {
             className={className}
             style={{ '--bin-color': color }}
             ref={(el) => (binRefs.current[label] = el)}
-            aria-label={isHit ? `${short}: +${POINTS_PER_SCAN} punten` : short}
+            aria-label={isHit ? `${short}: goed gesorteerd` : short}
           >
             <span className="bin-lid" aria-hidden="true" />
             <span className="bin-body" aria-hidden="true" />
             <span className="bin-name">{short}</span>
             {isHit && (
               <span key={hit.id} className="bin-plus" aria-hidden="true">
-                +{POINTS_PER_SCAN}
+                ✓
               </span>
             )}
           </div>

@@ -13,7 +13,15 @@ export const DETECTION = {
   resetFrames: 8, // na een score eerst 8 frames (≈ 2 s) lege achtergrond tonen
 }
 
+// Punten worden enkel op de achtergrond in Firebase bijgehouden (opdrachteis).
+// De gebruiker ziet complimenten en het aantal gesorteerde verpakkingen.
 export const POINTS_PER_SCAN = 10
+
+// Streak: scans na elkaar zonder lange pauze. Bij een mijlpaal komt een extra boodschap.
+export const STREAK = {
+  resetMs: 2 * 60 * 1000, // na 2 minuten zonder scan begint de teller opnieuw
+  milestones: [3, 5, 10], // daarna elke 10 (20, 30, ...)
+}
 
 // Spelvorm: na een bevestigde scan vliegt een momentopname naar de juiste vuilbak.
 // De momentopname blijft in de browser en gaat nooit naar Firebase.
@@ -33,18 +41,21 @@ export const WASTE_CLASSES = {
     bin: 'Blauwe PMD-zak',
     color: '#2563eb',
     tip: 'Maak de verpakking leeg. Doppen mogen erop, verpakkingen niet in elkaar steken.',
+    compliments: ['Goed gesorteerd!', 'Netjes, die mag in de blauwe zak!', 'PMD-pro!'],
   },
   'Papier/Karton': {
     short: 'Papier',
     bin: 'Papier en karton',
     color: '#b45309',
     tip: 'Plooi dozen plat. Vettig of nat karton (zoals een pizzadoos met resten) hoort bij restafval.',
+    compliments: ['Top, papier gered!', 'Goed gesorteerd!', 'Karton-kampioen!'],
   },
   Restafval: {
     short: 'Rest',
     bin: 'Restafvalzak',
     color: '#475569',
     tip: 'Deze verpakking kan niet gerecycleerd worden via PMD of papier.',
+    compliments: ['Goed gezien, dat is restafval.', 'Juiste keuze!', 'Niet alles is recycleerbaar, goed gedaan.'],
   },
 }
 

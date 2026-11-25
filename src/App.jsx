@@ -3,10 +3,11 @@ import Camera from './components/Camera.jsx'
 import AdviceCard from './components/AdviceCard.jsx'
 import Bins, { takeSnapshot } from './components/Bins.jsx'
 import useModel from './hooks/useModel.js'
-import usePoints from './hooks/usePoints.js'
+import useScans from './hooks/useScans.js'
+import { nextStreak, pickCompliment, streakMessage } from './lib/praise.js'
 import { createStabilizer, topPrediction } from './lib/stabilizer.js'
 import './scan.css'
-import { BACKGROUND_LABEL, DETECTION, POINTS_PER_SCAN } from './config.js'
+import { BACKGROUND_LABEL, DETECTION, POINTS_PER_SCAN, STREAK, WASTE_CLASSES } from './config.js'
 
 function ScanFrame({ frameRef }) {
   return (
@@ -18,15 +19,22 @@ function ScanFrame({ frameRef }) {
 
 export default function App() {
   const { model, error } = useModel()
-  const { points, addScan, error: pointsError } = usePoints()
+  const { count, addScan, error: scansError } = useScans()
   const [video, setVideo] = useState(null)
   const [predictions, setPredictions] = useState([])
   const [detection, setDetection] = useState({ status: 'idle', label: null, progress: 0 })
   const [confirmed, setConfirmed] = useState(null) // laatste bevestigde herkenning: { label, confidence }
   const [toss, setToss] = useState(null) // item dat naar de vuilbak vliegt: { id, label, image }
+  const [praise, setPraise] = useState(null) // compliment bij de laatste worp: { id, label, text, streak, landed }
+  const streak = useRef(null) // { count, at }
   const frameRef = useRef(null)
   const stabilizer = useRef(createStabilizer({ ...DETECTION, backgroundLabel: BACKGROUND_LABEL }))
   const onReady = useCallback((v) => setVideo(v), [])
+  // Het compliment verschijnt pas als de worp in de bak landt.
+  const onLand = useCallback(
+    (id) => setPraise((p) => (p && p.id === id ? { ...p, landed: true } : p)),
+    [],
+  )
 
   // Voorspel periodiek op het huidige camerabeeld.
   useEffect(() => {
@@ -38,8 +46,17 @@ export default function App() {
       setPredictions(preds)
       setDetection(result)
       if (result.status === 'confirmed') {
+        const id = Date.now()
+        streak.current = nextStreak(streak.current, id, STREAK.resetMs)
         setConfirmed({ label: result.label, confidence: top.probability })
-        setToss({ id: Date.now(), label: result.label, image: takeSnapshot(video, frameRef.current) })
+        setPraise((prev) => ({
+          id,
+          label: result.label,
+          text: pickCompliment(WASTE_CLASSES[result.label]?.compliments, prev?.text),
+          streak: streakMessage(streak.current.count, STREAK.milestones),
+          landed: false,
+        }))
+        setToss({ id, label: result.label, image: takeSnapshot(video, frameRef.current) })
         addScan({ label: result.label, confidence: top.probability, points: POINTS_PER_SCAN })
       }
     }, DETECTION.intervalMs)
@@ -58,7 +75,9 @@ export default function App() {
 
       <header className="scan-header">
         <h1 className="scan-title">Smart Sort Quest</h1>
-        <p className="scan-points" key={points}>{points} punten</p>
+        <p className="scan-count" key={count} aria-label={`${count} verpakkingen gesorteerd`}>
+          {count} gesorteerd
+        </p>
       </header>
 
       <section className="sheet" aria-label="Scanresultaat">
@@ -67,9 +86,10 @@ export default function App() {
           active={detection.status === 'detecting' ? detection.label : null}
           toss={toss}
           sourceRef={frameRef}
+          onLand={onLand}
         />
         {error && <p className="scan-alert" role="alert">{error}</p>}
-        {pointsError && <p className="scan-alert" role="alert">{pointsError}</p>}
+        {scansError && <p className="scan-alert" role="alert">{scansError}</p>}
         {!error && (
           <div className="sheet-status" role="status">
             {!model && <p>Model laden…</p>}
@@ -86,9 +106,15 @@ export default function App() {
               </>
             )}
             {model && (detection.status === 'confirmed' || detection.status === 'locked') && (
-              <p>
-                <strong>+{POINTS_PER_SCAN} punten!</strong> Haal de verpakking weg voor een volgende scan.
-              </p>
+              <>
+                {praise?.landed && (
+                  <div key={praise.id} className="praise" style={{ '--praise-color': WASTE_CLASSES[praise.label]?.color }}>
+                    <p className="praise-text">{praise.text}</p>
+                    {praise.streak && <p className="praise-streak">{praise.streak}</p>}
+                  </div>
+                )}
+                <p>Haal de verpakking weg voor een volgende scan.</p>
+              </>
             )}
           </div>
         )}

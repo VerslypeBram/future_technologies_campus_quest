@@ -65,7 +65,7 @@ body:has(.scan) {
 }
 
 .scan-title,
-.scan-points {
+.scan-count {
   margin: 0;
   padding: 10px 16px;
   border-radius: 999px;
@@ -77,7 +77,7 @@ body:has(.scan) {
   white-space: nowrap;
 }
 
-.scan-points {
+.scan-count {
   font-variant-numeric: tabular-nums;
 }
 
@@ -130,6 +130,29 @@ body:has(.scan) {
 .sheet-status p {
   margin: 0;
   font-size: 16px;
+}
+
+/* Compliment na een worp, in de kleur van de vuilbak. */
+.praise {
+  margin-bottom: 6px;
+  animation: praise-in 360ms cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.sheet-status .praise-text {
+  color: var(--praise-color, var(--ink));
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.sheet-status .praise-streak {
+  margin-top: 2px;
+  font-weight: 700;
+}
+
+@keyframes praise-in {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: none; opacity: 1; }
 }
 
 .meter {
@@ -353,7 +376,7 @@ body:has(.scan) {
   }
 
   .scan-title,
-  .scan-points {
+  .scan-count {
     background: rgba(255, 255, 255, 0.12);
   }
 
@@ -478,9 +501,9 @@ body:has(.scan) {
   object-fit: cover;
 }
 
-/* Puntenpil tikt op bij elke nieuwe stand. */
-.scan-points {
-  animation: points-bump 380ms cubic-bezier(0.3, 1.6, 0.5, 1);
+/* Teller tikt op bij elke nieuwe stand. */
+.scan-count {
+  animation: count-bump 380ms cubic-bezier(0.3, 1.6, 0.5, 1);
 }
 
 @keyframes bin-bounce {
@@ -502,7 +525,7 @@ body:has(.scan) {
   100% { transform: translate(-50%, -34px); opacity: 0; }
 }
 
-@keyframes points-bump {
+@keyframes count-bump {
   0% { transform: none; }
   40% { transform: scale(1.12); }
   100% { transform: none; }
@@ -514,6 +537,7 @@ body:has(.scan) {
   .bin-body { transition: none; }
   .bin-hit,
   .bin-hit .bin-lid,
-  .scan-points { animation: none; }
+  .scan-count,
+  .praise { animation: none; }
   .bin-plus { animation: none; transform: translate(-50%, -20px); }
 }

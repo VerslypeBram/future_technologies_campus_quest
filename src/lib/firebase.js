@@ -1,4 +1,5 @@
-// Firebase: anonieme login + punten in Firestore.
+// Firebase: anonieme login + scans en punten in Firestore.
+// De punten blijven op de achtergrond (opdrachteis); de app toont het aantal scans.
 // Er worden NOOIT beelden verstuurd: enkel label, zekerheid en punten.
 import { initializeApp } from 'firebase/app'
 import { getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth'
@@ -31,9 +32,9 @@ export function watchUser(callback) {
   return onAuthStateChanged(auth, (user) => user && callback(user.uid))
 }
 
-/** Volgt het puntentotaal van een gebruiker live. */
-export function watchPoints(uid, callback) {
-  return onSnapshot(doc(db, 'users', uid), (snap) => callback(snap.data()?.points ?? 0))
+/** Volgt het aantal gesorteerde verpakkingen (scans) van een gebruiker live. */
+export function watchScanCount(uid, callback) {
+  return onSnapshot(doc(db, 'users', uid), (snap) => callback(snap.data()?.scans ?? 0))
 }
 
 /**
