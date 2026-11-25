@@ -1,6 +1,6 @@
 # Smart Sort Quest (Campus Quest – Track D)
 
-Een mobiele webapplicatie waarmee je afval correct leert sorteren (`PMD`, `Papier/Karton`, `Restafval`) met behulp van een zelfgetraind beeldherkenningsmodel. De app draait volledig in de browser op een smartphone via HTTPS en beloont correcte scans met punten.
+Een mobiele webapplicatie waarmee je afval correct leert sorteren (`PMD`, `Papier/Karton`, `Restafval`) met behulp van een zelfgetraind beeldherkenningsmodel. De app draait volledig in de browser op een smartphone via HTTPS en beloont correcte scans met een compliment. Op de achtergrond houdt Firebase per gebruiker de scans en punten bij; de app toont het aantal gesorteerde verpakkingen.
 
 ## 🔗 Live Demo & Video
 
