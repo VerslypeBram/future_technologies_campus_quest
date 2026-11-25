@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import * as tmImage from '@teachablemachine/image'
-import { COMPARE_MODELS } from '../config.js'
+import Camera from '../components/Camera.jsx'
+import { COMPARE_MODELS, WASTE_CLASSES } from '../config.js'
 import { evaluate } from '../lib/metrics.js'
 import { topPrediction } from '../lib/stabilizer.js'
+import '../vergelijk.css'
 
 const pct = (v) => (v === null ? '–' : `${Math.round(v * 100)}%`)
-const table = { borderCollapse: 'collapse', marginBottom: 12 }
 
 // Laadt een gekozen bestand als afbeelding. Blijft lokaal in de browser.
 function loadImage(file) {
@@ -32,6 +33,33 @@ async function loadMetadata() {
   )
 }
 
+// Neemt het huidige camerabeeld als JPEG-bestand. Blijft lokaal in de browser.
+function captureFrame(video, name) {
+  const canvas = document.createElement('canvas')
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  canvas.getContext('2d').drawImage(video, 0, 0)
+  return new Promise((resolve, reject) =>
+    canvas.toBlob((blob) => (blob ? resolve(new File([blob], name, { type: 'image/jpeg' })) : reject()), 'image/jpeg', 0.9),
+  )
+}
+
+// Kleine preview van een testfoto met een knop om ze te verwijderen.
+function Thumb({ file, onRemove }) {
+  const [url, setUrl] = useState(null)
+  useEffect(() => {
+    const u = URL.createObjectURL(file)
+    setUrl(u)
+    return () => URL.revokeObjectURL(u)
+  }, [file])
+  return (
+    <span className="cmp-thumb">
+      {url && <img src={url} alt={file.name} />}
+      <button type="button" onClick={onRemove} aria-label={`Verwijder ${file.name}`}>✕</button>
+    </span>
+  )
+}
+
 const sameLabels = (a, b) => a.length === b.length && a.every((l) => b.includes(l))
 
 // Testpagina: laat elk model los op dezelfde testfoto's (die niet in de trainingsset
@@ -42,6 +70,9 @@ export default function Compare() {
   const [results, setResults] = useState(null) // per model: evaluate(...) + voorspellingen
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [video, setVideo] = useState(null) // live camerabeeld
+  const [shotLabel, setShotLabel] = useState(null) // klasse waarvoor je foto's neemt
+  const onReady = useCallback((v) => setVideo(v), [])
 
   useEffect(() => {
     loadMetadata().then(setModels)
@@ -89,6 +120,16 @@ export default function Compare() {
     }
   }
 
+  const addFiles = (label, list) => setFiles((f) => ({ ...f, [label]: [...(f[label] ?? []), ...list] }))
+  const removeFile = (label, file) => setFiles((f) => ({ ...f, [label]: f[label].filter((x) => x !== file) }))
+
+  async function takePhoto() {
+    const label = shotLabel ?? labels[0]
+    if (!video?.videoWidth) return
+    const n = (files[label]?.length ?? 0) + 1
+    addFiles(label, [await captureFrame(video, `${label.replace(/\W+/g, "-")}-camera-${n}-${Date.now() % 100000}.jpg`)])
+  }
+
   const count = Object.values(files).reduce((s, f) => s + f.length, 0)
   // Foto's waarover de modellen het oneens zijn.
   const disagreements =
@@ -98,106 +139,176 @@ export default function Compare() {
           .filter((p) => new Set(p.all).size > 1)
       : []
 
+  const current = shotLabel ?? labels?.[0]
+
   return (
-    <main style={{ maxWidth: 760, margin: '0 auto', padding: 16, fontFamily: 'system-ui, sans-serif' }}>
-      <p><a href="/">← Terug naar scannen</a></p>
-      <h1>Modellen vergelijken</h1>
-      <p>
-        Kies per klasse testfoto's die <strong>niet</strong> in de trainingssets zaten. Elk model krijgt dezelfde
-        foto's. De foto's blijven op je toestel.
-      </p>
+    <main className="cmp">
+      <header className="cmp-header">
+        <a className="cmp-pill" href="/">← Scannen</a>
+        <h1 className="cmp-pill">Model testen</h1>
+      </header>
 
-      {missing.map((m) => (
-        <p key={m.name} style={{ color: '#b45309' }}>Model "{m.name}" niet gevonden op {m.url} (wordt overgeslagen).</p>
-      ))}
-      {mismatch && (
-        <p role="alert">
-          De klassen van "{mismatch.name}" verschillen van "{available[0].name}". Gebruik in beide modellen exact
-          dezelfde klassennamen.
+      <section className="cmp-card" aria-label="Testfoto's nemen">
+        <h2>Testfoto's nemen</h2>
+        <p className="cmp-intro">
+          Fotografeer per klasse verpakkingen die <strong>niet</strong> in de trainingsset zaten. Elk model krijgt
+          dezelfde foto's. De foto's blijven op je toestel.
         </p>
-      )}
-      {models && available.length === 0 && <p role="alert">Geen enkel model gevonden.</p>}
-      {error && <p role="alert">{error}</p>}
 
-      {labels && !mismatch && (
-        <>
-          {labels.map((label) => (
-            <label key={label} style={{ display: 'block', margin: '8px 0' }}>
-              <strong>{label}</strong> ({files[label]?.length ?? 0} foto's)
-              <br />
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) => setFiles((f) => ({ ...f, [label]: [...e.target.files] }))}
-              />
-            </label>
-          ))}
-          <button onClick={run} disabled={busy || count === 0}>
-            {busy ? 'Bezig…' : `Evalueer ${count} foto's met ${available.length} model(len)`}
-          </button>
-        </>
-      )}
+        {missing.map((m) => (
+          <p key={m.name} className="cmp-warn">Model "{m.name}" niet gevonden op {m.url} (wordt overgeslagen).</p>
+        ))}
+        {mismatch && (
+          <p className="cmp-alert" role="alert">
+            De klassen van "{mismatch.name}" verschillen van "{available[0].name}". Gebruik in beide modellen exact
+            dezelfde klassennamen.
+          </p>
+        )}
+        {models && available.length === 0 && <p className="cmp-alert" role="alert">Geen enkel model gevonden.</p>}
+        {error && <p className="cmp-alert" role="alert">{error}</p>}
+
+        {labels && !mismatch && (
+          <>
+            <div className="cmp-cam">
+              <Camera onReady={onReady}>
+                <div className="scan-frame" aria-hidden="true">
+                  <span /><span /><span /><span />
+                </div>
+              </Camera>
+            </div>
+
+            <p className="cmp-label" id="cmp-klasse">Foto's voor klasse</p>
+            <div className="cmp-chips" role="group" aria-labelledby="cmp-klasse">
+              {labels.map((label) => (
+                <button
+                  key={label}
+                  type="button"
+                  className="cmp-chip"
+                  aria-pressed={current === label}
+                  onClick={() => setShotLabel(label)}
+                >
+                  {WASTE_CLASSES[label] && <span className="cmp-dot" style={{ background: WASTE_CLASSES[label].color }} aria-hidden="true" />}
+                  {label} <span className="cmp-count">({files[label]?.length ?? 0})</span>
+                </button>
+              ))}
+            </div>
+
+            <button type="button" className="button" onClick={takePhoto} disabled={!video}>
+              📷 Foto nemen voor {current}
+            </button>
+
+            {count > 0 && (
+              <div className="cmp-shots">
+                {labels.filter((l) => files[l]?.length).map((label) => (
+                  <div key={label} className="cmp-shots-row">
+                    <strong>{label}</strong> <span className="cmp-count">({files[label].length} foto's)</span>
+                    <div className="cmp-thumbs">
+                      {files[label].map((file) => (
+                        <Thumb key={file.name + file.lastModified} file={file} onRemove={() => removeFile(label, file)} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <details className="scan-extra">
+              <summary>Of bestanden kiezen</summary>
+              {labels.map((label) => (
+                <label key={label} className="cmp-file">
+                  {label}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => {
+                      addFiles(label, [...e.target.files])
+                      e.target.value = ''
+                    }}
+                  />
+                </label>
+              ))}
+            </details>
+
+            <button type="button" className="button" onClick={run} disabled={busy || count === 0}>
+              {busy ? 'Bezig…' : `Evalueer ${count} foto's met ${available.length} model(len)`}
+            </button>
+          </>
+        )}
+      </section>
 
       {results && (
-        <section>
+        <section className="cmp-card" aria-label="Uitslag">
           <h2>Nauwkeurigheid</h2>
-          <table border="1" cellPadding="6" style={table}>
-            <thead>
-              <tr>
-                <th>Klasse</th>
-                {results.map((r) => <th key={r.name}>{r.name}</th>)}
-                {results.length === 2 && <th>Verschil (B − A)</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {[...labels, null].map((label) => {
-                const cells = results.map((r) => (label ? r.perClass.find((c) => c.label === label) : r))
-                const diff =
-                  results.length === 2 && cells[0].accuracy !== null && cells[1].accuracy !== null
-                    ? Math.round((cells[1].accuracy - cells[0].accuracy) * 100)
-                    : null
-                return (
-                  <tr key={label ?? 'totaal'} style={label ? undefined : { fontWeight: 'bold' }}>
-                    <td>{label ?? 'Totaal'}</td>
-                    {cells.map((c, i) => <td key={i}>{pct(c.accuracy)} ({c.correct}/{c.total})</td>)}
-                    {results.length === 2 && <td>{diff === null ? '–' : `${diff > 0 ? '+' : ''}${diff} %-punt`}</td>}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+          <div className="cmp-scores">
+            {results.map((r) => (
+              <div key={r.name} className="cmp-score">
+                <p className="cmp-score-name">{r.name}</p>
+                <p className="cmp-score-num">{pct(r.accuracy)}</p>
+                <p className="cmp-score-sub">{r.correct} van {r.total} goed</p>
+              </div>
+            ))}
+          </div>
+
+          <h3>Per klasse</h3>
+          <div className="cmp-scroll">
+            <table className="cmp-table">
+              <thead>
+                <tr>
+                  <th>Klasse</th>
+                  {results.map((r) => <th key={r.name} className="num">{r.name}</th>)}
+                  {results.length === 2 && <th className="num">Verschil (B − A)</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {[...labels, null].map((label) => {
+                  const cells = results.map((r) => (label ? r.perClass.find((c) => c.label === label) : r))
+                  const diff =
+                    results.length === 2 && cells[0].accuracy !== null && cells[1].accuracy !== null
+                      ? Math.round((cells[1].accuracy - cells[0].accuracy) * 100)
+                      : null
+                  return (
+                    <tr key={label ?? 'totaal'} className={label ? undefined : 'total'}>
+                      <th scope="row">{label ?? 'Totaal'}</th>
+                      {cells.map((c, i) => <td key={i} className="num">{pct(c.accuracy)} ({c.correct}/{c.total})</td>)}
+                      {results.length === 2 && <td className="num">{diff === null ? '–' : `${diff > 0 ? '+' : ''}${diff} %-punt`}</td>}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
 
           {results.map((r) => (
             <div key={r.name}>
-              <h3>Verwarringsmatrix {r.name} (rij = echt, kolom = voorspeld)</h3>
-              <table border="1" cellPadding="6" style={table}>
-                <thead>
-                  <tr><th></th>{labels.map((l) => <th key={l}>{l}</th>)}</tr>
-                </thead>
-                <tbody>
-                  {labels.map((row) => (
-                    <tr key={row}>
-                      <th>{row}</th>
-                      {labels.map((col) => (
-                        <td
-                          key={col}
-                          style={{ textAlign: 'center', background: row === col ? '#dcfce7' : r.matrix[row][col] ? '#fee2e2' : undefined }}
-                        >
-                          {r.matrix[row][col]}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <h3>Verwarringsmatrix {r.name}</h3>
+              <p className="cmp-sticky-note">Rij = echt, kolom = voorspeld.</p>
+              <div className="cmp-scroll">
+                <table className="cmp-table cmp-matrix">
+                  <thead>
+                    <tr><th></th>{labels.map((l) => <th key={l} className="num">{l}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {labels.map((row) => (
+                      <tr key={row}>
+                        <th scope="row">{row}</th>
+                        {labels.map((col) => (
+                          <td key={col} className={`cell ${row === col ? 'ok' : r.matrix[row][col] ? 'bad' : ''}`}>
+                            {r.matrix[row][col]}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ))}
 
           {results.length > 1 && (
             <>
               <h3>Foto's waarover de modellen het oneens zijn ({disagreements.length})</h3>
-              <ul>
+              <ul className="cmp-list">
                 {disagreements.map((d) => (
                   <li key={d.expected + d.file}>
                     {d.file} (echt: {d.expected}) → {results.map((r, i) => `${r.name.split(':')[0]}: ${d.all[i]}`).join(', ')}
@@ -208,7 +319,7 @@ export default function Compare() {
           )}
 
           {results.map((r) => (
-            <details key={r.name}>
+            <details key={r.name} className="scan-extra">
               <summary>Fout voorspeld door {r.name} ({r.total - r.correct})</summary>
               <ul>
                 {r.preds.filter((p) => p.expected !== p.predicted).map((p) => (
