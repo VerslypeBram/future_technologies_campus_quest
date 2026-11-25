@@ -15,6 +15,13 @@ export const DETECTION = {
 
 export const POINTS_PER_SCAN = 10
 
+// Spelvorm: na een bevestigde scan vliegt een momentopname naar de juiste vuilbak.
+// De momentopname blijft in de browser en gaat nooit naar Firebase.
+export const GAME = {
+  flightMs: 900, // duur van de worp naar de vuilbak
+  snapshotSize: 160, // breedte en hoogte (px) van de momentopname
+}
+
 // Klasse in Teachable Machine die "geen object" betekent: geen advies.
 export const BACKGROUND_LABEL = 'Geen verpakking'
 
@@ -22,16 +29,19 @@ export const BACKGROUND_LABEL = 'Geen verpakking'
 // klassennamen in Teachable Machine (zie public/model/metadata.json).
 export const WASTE_CLASSES = {
   PMD: {
+    short: 'PMD',
     bin: 'Blauwe PMD-zak',
     color: '#2563eb',
     tip: 'Maak de verpakking leeg. Doppen mogen erop, verpakkingen niet in elkaar steken.',
   },
   'Papier/Karton': {
+    short: 'Papier',
     bin: 'Papier en karton',
     color: '#b45309',
     tip: 'Plooi dozen plat. Vettig of nat karton (zoals een pizzadoos met resten) hoort bij restafval.',
   },
   Restafval: {
+    short: 'Rest',
     bin: 'Restafvalzak',
     color: '#475569',
     tip: 'Deze verpakking kan niet gerecycleerd worden via PMD of papier.',
