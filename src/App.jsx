@@ -86,19 +86,24 @@ export default function App() {
 
         {showAdvice && <AdviceCard label={confirmed.label} confidence={confirmed.confidence} />}
 
-        <div className="scan-extra">
-          <details>
-            <summary>Zekerheid per klasse</summary>
-            <ul>
-              {predictions.map((p) => (
-                <li key={p.className}>
-                  {p.className}: {(p.probability * 100).toFixed(0)}%
+        {predictions.length > 0 && (
+          <ul className="scores" aria-label="Zekerheid per klasse">
+            {predictions.map((p) => {
+              const value = Math.round(p.probability * 100)
+              return (
+                <li key={p.className} className="score-row">
+                  <span className="score-name">{p.className}</span>
+                  <span className="score-value">{value}%</span>
+                  <span className="meter" aria-hidden="true">
+                    <span style={{ width: `${value}%` }} />
+                  </span>
                 </li>
-              ))}
-            </ul>
-          </details>
-          <a href="/vergelijk">Model testen met eigen testfoto's</a>
-        </div>
+              )
+            })}
+          </ul>
+        )}
+
+        <a className="button button-ghost scan-test" href="/vergelijk">Model testen met eigen foto's</a>
       </section>
     </main>
   )
